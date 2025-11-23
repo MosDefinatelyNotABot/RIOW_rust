@@ -1,5 +1,7 @@
 mod camera;
 mod ray;
+mod hittable;
+mod sphere;
 
 use crate::camera::{Camera};
 
