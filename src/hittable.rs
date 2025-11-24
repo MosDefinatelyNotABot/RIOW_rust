@@ -1,16 +1,17 @@
+use std::sync::Arc;
 use ultraviolet::Vec3;
+use crate::material::Material;
 use crate::ray::Ray;
 
 pub struct HitRecord {
     pub point: Vec3,
     pub normal: Vec3,
+    pub material: Arc<dyn Material>,
     pub t: f32,
     pub front_face: bool
 }
 
-
-
-pub trait Hittable {
+pub trait Hittable: Sync + Send {
 
     fn hit(&self, ray: &Ray, t_min: f32, t_max: f32) -> Option<HitRecord>;
 

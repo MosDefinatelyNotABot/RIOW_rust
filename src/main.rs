@@ -2,7 +2,9 @@ mod camera;
 mod ray;
 mod hittable;
 mod sphere;
+mod material;
 
+use std::sync::Arc;
 use ultraviolet::Vec3;
 use crate::camera::{Camera};
 use crate::hittable::HittableList;
@@ -18,13 +20,21 @@ fn main() {
         720,            // height 720p
         1.7777778,     // aspect ratio 16:9
         64,
-        1.0             // focal length 1.0 in camera space
+        32             // focal length 1.0 in camera space
     );
 
     // scene setup
     let mut world = HittableList::new();
-    world.add(Box::new(Sphere::new(Vec3::new(0.0, 0.0, -1.0), 0.5)));
-    world.add(Box::new(Sphere::new(Vec3::new(0.0, -100.5, -1.0), 100.0)));
+
+    let mat_ground = Arc::new(material::Lambertian::new(Vec3::new(0.8, 0.8, 0.0)));
+    let mat_center = Arc::new(material::Lambertian::new(Vec3::new(0.1, 0.2, 0.5)));
+    let mat_left = Arc::new(material::Metal::new(Vec3::new(0.8, 0.8, 0.8), 0.3));
+    let mat_right = Arc::new(material::Metal::new(Vec3::new(0.8, 0.6, 0.2), 1.0));
+
+    world.add(Box::new(Sphere::new(Vec3::new(0.0, -100.5, -1.0), 100.0, mat_ground)));
+    world.add(Box::new(Sphere::new(Vec3::new(0.0, 0.0, -1.2), 0.5, mat_center)));
+    world.add(Box::new(Sphere::new(Vec3::new(-1.0, 0.0, -1.0), 0.5, mat_left)));
+    world.add(Box::new(Sphere::new(Vec3::new(1.0, 0.0, -1.0), 0.5, mat_right)));
 
     // render scene
     frame_obj.render(&world);
