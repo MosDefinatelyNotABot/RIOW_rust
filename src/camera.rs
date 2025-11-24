@@ -4,8 +4,11 @@ use indicatif::ProgressBar;
 use indicatif::ProgressStyle;
 use ultraviolet::Vec3;
 use itertools::iproduct;
+use rand::Rng;
+use rand::rngs::ThreadRng;
 use crate::hittable::{Hittable, HittableList};
 use crate::ray::Ray;
+use rayon::prelude::*;
 
 pub struct Camera {
     width: u32,
@@ -13,6 +16,7 @@ pub struct Camera {
     aspect_ratio: f32,
     px_samples: u32,
     px_samples_scale: f32,
+    max_ray_depth: u32,
     image: RgbImage,
 
     focal_length: f32,
@@ -30,12 +34,13 @@ pub struct Camera {
 
 impl Camera {
 
-    pub fn init(height: u32, aspect: f32, samples_per_px: u32, focal: f32) -> Self {
+    pub fn init(height: u32, aspect: f32, samples_per_px: u32, max_depth: u32) -> Self {
 
         // camera setup
         let width = (height as f32 * aspect) as u32;
         let viewport_height = 2.0;
         let viewport_width = viewport_height * aspect;
+        let focal = 1.0;
 
         let origin = Vec3::new(0.0, 0.0, 0.0);
         let viewport_u = Vec3::new(viewport_width, 0.0, 0.0);
@@ -57,6 +62,7 @@ impl Camera {
             aspect_ratio: aspect,
             px_samples: samples_per_px,
             px_samples_scale: 1.0 / (samples_per_px as f32),
+            max_ray_depth: max_depth,
             image: image::RgbImage::new(width, height),
 
             focal_length: focal,
@@ -81,9 +87,11 @@ impl Camera {
 
         for (x, y) in iproduct!((0..self.width).into_iter(), (0..self.height).into_iter()) {
 
-            let col: Vec3 = (0..self.px_samples)                       // for each pixel sample
-                .map(|_| Camera::ray_colour(&self.get_ray(x, y), world)) // calc the pixel colour
-                .sum::<Vec3>() * self.px_samples_scale;                  // then accumulate and scale.
+            let mut col: Vec3 = (0..self.px_samples).into_par_iter() // for each pixel sample
+                .map(|_| Camera::ray_colour(&self.get_ray(x, y), self.max_ray_depth, world)) // calc the pixel colour
+                .sum::<Vec3>() * self.px_samples_scale;
+
+            col.apply(|c| c.sqrt().clamp( 0.000, 0.999) * 255.999 );
 
             self.image.put_pixel(x, y, Rgb([col.x as u8, col.y as u8, col.z as u8]));
             pg_bar.inc(1);
@@ -122,30 +130,38 @@ impl Camera {
             ProgressStyle::with_template("elapsed: [{elapsed}] eta: [{eta_precise}] {bar:50.cyan/blue} {pos:>7}/{len:7} {msg}")
                 .unwrap()
                 .progress_chars("##-"));
-        pg_bar.set_message("rendering frame...");
+        pg_bar.set_message("rendering image...");
 
         pg_bar
 
     }
 
-    fn ray_colour(ray: &Ray, world: &HittableList) -> Vec3 {
+    fn ray_colour(ray: &Ray, depth: u32, world: &HittableList) -> Vec3 {
 
-        let t = world.hit(ray, 0.0, f32::INFINITY) ;
+        // max depth termination
+        if depth <= 0 { return Vec3::new(0.0, 0.0, 0.0); }
 
-        if t.is_some() {
-            // calculate the surface normal of the sphere if it's hit
+        let rec_option = world.hit(ray, 0.001, f32::INFINITY) ;
 
-            let normal: Vec3  = 0.5 * (t.unwrap().normal + Vec3::new(1.0, 1.0, 1.0));
-            return 255.0 * normal; // convert to rgb values
+        if rec_option.is_some() {
+            // calculate the surface colour of the sphere if it's hit
+            let rec = rec_option.unwrap();
+            let mat_option = rec.material.scatter(ray, &rec);
+
+            return if mat_option.is_some() {
+                let (scatter_dir, attenuation) = mat_option.unwrap();
+                attenuation * Self::ray_colour(&scatter_dir, depth - 1, world)
+            } else {
+                Vec3::new(0.0, 0.0, 0.0)
+            }
 
         }
 
         let unit_dir = ray.direction.normalized();
         let a = 0.5 * (unit_dir.y + 1.0);
-
         let out = (1.0 - a) * Vec3::new(1.0, 1.0, 1.0) + a * Vec3::new(0.5, 0.7, 1.0);
 
-        255.0 * out
+        out
 
     }
 
@@ -153,7 +169,11 @@ impl Camera {
         // generates a ray originating from the camera center directed at a randomly sampled
         // point centered at pixel i j
 
-        let offset: (f32, f32) = rand::random();
+        let mut rng = ThreadRng::default();
+
+        let offset: (f32, f32) = (
+            rng.random_range(-0.5..0.5),
+            rng.random_range(-0.5..0.5));
 
         let px_sample = self.px_loc_100
             + ( (u as f32 + offset.0) * self.px_delta_u)
@@ -162,6 +182,41 @@ impl Camera {
         Ray::new(&self.origin, &(px_sample - self.origin))
 
     }
+
+    fn random_on_hemisphere(normal: &Vec3) -> Vec3 {
+
+        let rand_vec = random_unit_vec();
+        if normal.dot(rand_vec) > 0.0 { rand_vec } else { -rand_vec }
+
+    }
+
+}
+
+pub fn random_unit_vec() -> Vec3 {
+
+    let mut rng = ThreadRng::default();
+
+    // loop {
+    //     let rand_vec = Vec3::new(
+    //         rng.random_range(-1.0..1.0) as f32,
+    //         rng.random_range(-1.0..1.0) as f32,
+    //         rng.random_range(-1.0..1.0) as f32);
+    //
+    //     // let len_sq = rand_vec.mag_sq();
+    //     //
+    //     // if 1e-160 < len_sq && len_sq < 1.0 {
+    //     //     return rand_vec.normalized();
+    //     // }
+    //
+    //     return rand_vec.normalized();
+    // }
+
+    Vec3::new(
+        rng.random_range(-1.0..1.0) as f32,
+        rng.random_range(-1.0..1.0) as f32,
+        rng.random_range(-1.0..1.0) as f32)
+        .normalized()
+
 
 }
 

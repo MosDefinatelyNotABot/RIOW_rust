@@ -1,15 +1,18 @@
+use std::sync::Arc;
 use ultraviolet::Vec3;
 use crate::hittable::{HitRecord, Hittable};
+use crate::material::Material;
 use crate::ray::Ray;
 
 pub struct Sphere {
     centre: Vec3,
-    radius: f32
+    radius: f32,
+    mat: Arc<dyn Material>
 }
 
 impl Sphere {
-    pub fn new(centre: Vec3, radius: f32) -> Self {
-        Sphere { centre, radius: f32::max(0.0, radius) }
+    pub fn new(centre: Vec3, radius: f32, mat: Arc<dyn Material>) -> Self {
+        Sphere { centre, radius: f32::max(0.0, radius),  mat }
     }
 }
 
@@ -33,6 +36,7 @@ impl Hittable for Sphere {
                 return Some(HitRecord{
                     point: pnt,
                     normal: (pnt - self.centre) / self.radius,
+                    material: self.mat.clone(),
                     t: root,
                     front_face: true
                 });
@@ -46,6 +50,7 @@ impl Hittable for Sphere {
                 return Some(HitRecord{
                     point: pnt,
                     normal: (pnt - self.centre) / self.radius,
+                    material: self.mat.clone(),
                     t: root,
                     front_face: false
                 });
