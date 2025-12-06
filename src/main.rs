@@ -13,14 +13,14 @@ use crate::sphere::Sphere;
 fn main() {
 
     println!("Ray Tracing in One Weekend.\n\
-              ===========================\n");
+              ===========================");
 
     // camera setup
     let mut frame_obj = Camera::init(
-        720,            // height 720p
+        480,            // height 720p
         1.7777778,     // aspect ratio 16:9
-        64,
-        32             // focal length 1.0 in camera space
+        32,
+        32
     );
 
     // scene setup
@@ -28,19 +28,21 @@ fn main() {
 
     let mat_ground = Arc::new(material::Lambertian::new(Vec3::new(0.8, 0.8, 0.0)));
     let mat_center = Arc::new(material::Lambertian::new(Vec3::new(0.1, 0.2, 0.5)));
-    let mat_left = Arc::new(material::Metal::new(Vec3::new(0.8, 0.8, 0.8), 0.3));
+    let mat_left = Arc::new(material::Dielectric::new(1.50 ));
+    let mat_bubble = Arc::new(material::Dielectric::new(1.00 / 1.50 ));
     let mat_right = Arc::new(material::Metal::new(Vec3::new(0.8, 0.6, 0.2), 1.0));
 
     world.add(Box::new(Sphere::new(Vec3::new(0.0, -100.5, -1.0), 100.0, mat_ground)));
     world.add(Box::new(Sphere::new(Vec3::new(0.0, 0.0, -1.2), 0.5, mat_center)));
     world.add(Box::new(Sphere::new(Vec3::new(-1.0, 0.0, -1.0), 0.5, mat_left)));
+    world.add(Box::new(Sphere::new(Vec3::new(-1.0, 0.0, -1.0), 0.4, mat_bubble)));
     world.add(Box::new(Sphere::new(Vec3::new(1.0, 0.0, -1.0), 0.5, mat_right)));
 
     // render scene
     frame_obj.render(&world);
 
     // save rendered image to file
-    frame_obj.save("test.png");
+    frame_obj.save(Some("test.png"));
 
 }
 

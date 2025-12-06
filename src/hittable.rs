@@ -1,3 +1,4 @@
+use std::ops::Range;
 use std::sync::Arc;
 use ultraviolet::Vec3;
 use crate::material::Material;
@@ -7,13 +8,13 @@ pub struct HitRecord {
     pub point: Vec3,
     pub normal: Vec3,
     pub material: Arc<dyn Material>,
-    pub t: f32,
+    pub time: f32,
     pub front_face: bool
 }
 
 pub trait Hittable: Sync + Send {
 
-    fn hit(&self, ray: &Ray, t_min: f32, t_max: f32) -> Option<HitRecord>;
+    fn hit(&self, ray: &Ray, t_interval: Range<f32>) -> Option<HitRecord>;
 
 }
 
@@ -38,10 +39,10 @@ impl HittableList {
 }
 
 impl Hittable for HittableList {
-    fn hit(&self, ray: &Ray, t_min: f32, t_max: f32) -> Option<HitRecord> {
+    fn hit(&self, ray: &Ray, t_interval: Range<f32>) -> Option<HitRecord> {
         self.vec.iter()
-            .filter_map(|x| x.hit(ray, t_min, t_max))
-            .min_by(|a, b| a.t.partial_cmp(&b.t).unwrap())
+            .filter_map(|x| x.hit(ray, t_interval.clone()))
+            .min_by(|a, b| a.time.partial_cmp(&b.time).unwrap())
     }
 
 }
