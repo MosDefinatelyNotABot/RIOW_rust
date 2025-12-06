@@ -4,9 +4,10 @@ mod hittable;
 mod sphere;
 mod material;
 
+use std::f32::consts::PI;
 use std::sync::Arc;
 use ultraviolet::Vec3;
-use crate::camera::{Camera};
+use crate::camera::{Camera, CameraSetup};
 use crate::hittable::HittableList;
 use crate::sphere::Sphere;
 
@@ -14,14 +15,6 @@ fn main() {
 
     println!("Ray Tracing in One Weekend.\n\
               ===========================");
-
-    // camera setup
-    let mut frame_obj = Camera::init(
-        480,            // height 720p
-        1.7777778,     // aspect ratio 16:9
-        32,
-        32
-    );
 
     // scene setup
     let mut world = HittableList::new();
@@ -38,11 +31,26 @@ fn main() {
     world.add(Box::new(Sphere::new(Vec3::new(-1.0, 0.0, -1.0), 0.4, mat_bubble)));
     world.add(Box::new(Sphere::new(Vec3::new(1.0, 0.0, -1.0), 0.5, mat_right)));
 
+    // camera setup
+    let camera_setup = CameraSetup::new(
+        480,                            // image height
+        16.0 / 9.0,                     // image aspect ratio
+        32,                             // samples per pixel
+        32,                             // max ray bounce depth
+        1.0,                            // focal length
+        20.0_f32.to_radians(),                       // vertical field of view
+        Vec3::new(-2.0, 2.0, 1.0), // look from position
+        Vec3::new(0.0, 0.0, -1.0),  // look at position
+        Vec3::new(0.0, 1.0, 0.0),  // vertical up Vec
+    );
+
+    let mut camera_obj = Camera::init(&camera_setup);
+
     // render scene
-    frame_obj.render(&world);
+    camera_obj.render(&world);
 
     // save rendered image to file
-    frame_obj.save(Some("test.png"));
+    camera_obj.save(Some("chap12.2.2.png"));
 
 }
 

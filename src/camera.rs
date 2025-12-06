@@ -31,27 +31,33 @@ pub struct Camera {
     px_delta_u: Vec3,
     px_delta_v: Vec3,
     px_loc_100: Vec3,
+    u: Vec3, v: Vec3, w: Vec3,
 }
 
 impl Camera {
 
-    pub fn init(height: u32, aspect: f32, samples_per_px: u32, max_depth: u32) -> Self {
+    pub fn init(cam_setup: &CameraSetup) -> Self {
 
         // camera setup
-        let width = (height as f32 * aspect) as u32;
-        let viewport_height = 2.0;
-        let viewport_width = viewport_height * aspect;
-        let focal = 1.0;
+        let width = (cam_setup.image_height as f32 * cam_setup.aspect_ratio) as u32;
+        let h = (cam_setup.vfov / 2.0).tan();
+        let focal_length = (cam_setup.look_from - cam_setup.look_at).mag();
+        let viewport_height = 2.0 * h * focal_length;
+        let viewport_width = viewport_height * cam_setup.aspect_ratio;
 
-        let origin = Vec3::zero();
-        let viewport_u = Vec3::new(viewport_width, 0.0, 0.0);
-        let viewport_v = Vec3::new(0.0, -viewport_height, 0.0);
+        let w = (cam_setup.look_from - cam_setup.look_at).normalized();
+        let u = cam_setup.vertical_up.cross(w).normalized();
+        let v = w.cross(u);
+
+        let origin = cam_setup.look_from;
+        let viewport_u= viewport_width * u;
+        let viewport_v = viewport_height * -v;
 
         let px_delta_u = viewport_u / (width as f32);
-        let px_delta_v = viewport_v / (height as f32);
+        let px_delta_v = viewport_v / (cam_setup.image_height as f32);
 
         let viewport_up_left = origin
-            - Vec3::new(0.0, 0.0, focal)
+            - (focal_length * w)
             - viewport_u / 2.0
             - viewport_v / 2.0;
         let px_loc_100 = viewport_up_left + 0.5 * (px_delta_u + px_delta_v);
@@ -59,14 +65,14 @@ impl Camera {
         Camera{
 
             width,
-            height,
-            aspect_ratio: aspect,
-            px_samples: samples_per_px,
-            px_samples_scale: 1.0 / (samples_per_px as f32),
-            max_depth,
-            image: image::RgbImage::new(width, height),
+            height: cam_setup.image_height,
+            aspect_ratio: cam_setup.aspect_ratio,
+            px_samples: cam_setup.samples_per_px,
+            px_samples_scale: 1.0 / (cam_setup.samples_per_px as f32),
+            max_depth: cam_setup.max_depth,
+            image: RgbImage::new(width, cam_setup.image_height),
 
-            focal_length: focal,
+            focal_length,
             viewport_height,
             viewport_width,
 
@@ -77,6 +83,7 @@ impl Camera {
             px_delta_u,
             px_delta_v,
             px_loc_100,
+            u, v, w,
 
         }
 
@@ -97,7 +104,9 @@ impl Camera {
 
             // gamma correction
             col.apply( |x| if x > 0.0 { x.sqrt() } else { 0.0 } );
+            // clamp
             col.apply( |x| x.clamp(0.0, 0.999) );
+            // conversion to range 0-255
             col.apply( |x| (x * 255.0).round() );
 
             self.image.put_pixel(x, y, Rgb([col.x as u8, col.y as u8, col.z as u8]));
@@ -211,6 +220,59 @@ pub fn random_unit_vec() -> Vec3 {
 
     }
 
+}
+
+pub struct CameraSetup {
+    image_height: u32,
+    aspect_ratio: f32,
+    samples_per_px: u32,
+    max_depth: u32,
+    focal_length: f32,
+    vfov: f32, // in radians
+    look_from: Vec3,
+    look_at: Vec3,
+    vertical_up: Vec3,
+}
+
+impl CameraSetup {
+
+    pub fn new(
+        image_height: u32,
+        aspect_ratio: f32,
+        samples_per_px: u32,
+        max_depth: u32,
+        focal_length: f32,
+        vertical_field_of_view: f32,
+        look_from: Vec3,
+        look_at: Vec3,
+        vertical_up: Vec3
+    ) -> Self {
+        CameraSetup {
+            image_height,
+            aspect_ratio,
+            samples_per_px,
+            max_depth,
+            focal_length,
+            vfov: vertical_field_of_view,
+            look_from,
+            look_at,
+            vertical_up
+        }
+    }
+
+    pub fn default() -> Self {
+        CameraSetup {
+            image_height: 720,
+            aspect_ratio: 16.0 / 9.0,
+            samples_per_px: 32,
+            max_depth: 64,
+            focal_length: 1.0,
+            vfov: std::f32::consts::PI / 2.0,
+            look_from: Vec3::new(0.0, 0.0, 0.0),
+            look_at: Vec3::new(0.0, 0.0, -1.0),
+            vertical_up: Vec3::new(0.0, 1.0, 0.0),
+        }
+    }
 }
 
 
