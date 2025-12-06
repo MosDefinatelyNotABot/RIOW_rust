@@ -1,3 +1,4 @@
+use std::ops::Range;
 use std::sync::Arc;
 use ultraviolet::Vec3;
 use crate::hittable::{HitRecord, Hittable};
@@ -7,59 +8,55 @@ use crate::ray::Ray;
 pub struct Sphere {
     centre: Vec3,
     radius: f32,
-    mat: Arc<dyn Material>
+    material: Arc<dyn Material>
 }
 
 impl Sphere {
-    pub fn new(centre: Vec3, radius: f32, mat: Arc<dyn Material>) -> Self {
-        Sphere { centre, radius: f32::max(0.0, radius),  mat }
+    pub fn new(centre: Vec3, radius: f32, material: Arc<dyn Material>) -> Self {
+        Sphere { centre, radius: f32::max(0.0, radius), material }
     }
+
+    pub fn get_face_normal(r: &Ray, out_norm: Vec3) -> (bool, Vec3) {
+        let front_face = r.direction.dot(out_norm) < 0.0;
+        let normal = if front_face { out_norm } else { -out_norm };
+
+        (front_face, normal)
+    }
+
 }
 
 impl Hittable for Sphere {
-    fn hit(&self, ray: &Ray, t_min: f32, t_max: f32) -> Option<HitRecord> {
+    fn hit(&self, ray: &Ray, t_interval: Range<f32>) -> Option<HitRecord> {
 
-        let oc = self.centre.clone() - ray.origin;
+        let oc = self.centre - ray.origin;
         let a = ray.direction.mag_sq();
         let h = ray.direction.dot(oc);
         let c = oc.mag_sq() - self.radius * self.radius;
 
         let discriminant = h * h - a * c;
 
-        if discriminant > 0.0 {
-            let discriminant_sqrt = discriminant.sqrt();
-            let root = (h - discriminant_sqrt) / a;
+        if discriminant < 0.0 { return None }
 
-            if root < t_max && root > t_min {
-
-                let pnt = ray.at(root);
-                return Some(HitRecord{
-                    point: pnt,
-                    normal: (pnt - self.centre) / self.radius,
-                    material: self.mat.clone(),
-                    t: root,
-                    front_face: true
-                });
-
+        let discriminant_sqrt = discriminant.sqrt();
+        let mut root = (h - discriminant_sqrt) / a;
+        if !t_interval.contains(&root) {
+            root = ( h + discriminant_sqrt ) / a;
+            if !t_interval.contains(&root) {
+                return None
             }
-
-            let root = (h + discriminant_sqrt) / a;
-            if root < t_max && root > t_min {
-
-                let pnt = ray.at(root);
-                return Some(HitRecord{
-                    point: pnt,
-                    normal: (pnt - self.centre) / self.radius,
-                    material: self.mat.clone(),
-                    t: root,
-                    front_face: false
-                });
-
-            }
-
         }
 
-        None
+        let p = ray.at(root);
+        let norm = ( p - self.centre ) / self.radius;
+        let (front_face, out_norm) = Sphere::get_face_normal(ray, norm);
+
+        Some(HitRecord{
+            point: p,
+            normal: out_norm,
+            time: root,
+            front_face,
+            material: self.material.clone()
+        })
 
     }
 }
