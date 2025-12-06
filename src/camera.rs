@@ -8,6 +8,7 @@ use rayon::iter::IntoParallelIterator;
 use rayon::prelude::*;
 use crate::hittable::{Hittable, HittableList};
 use crate::ray::Ray;
+use rayon::prelude::*;
 
 pub struct Camera {
     width: u32,
@@ -182,6 +183,41 @@ impl Camera {
         pg_bar
 
     }
+
+
+    fn random_on_hemisphere(normal: &Vec3) -> Vec3 {
+
+        let rand_vec = random_unit_vec();
+        if normal.dot(rand_vec) > 0.0 { rand_vec } else { -rand_vec }
+
+    }
+
+}
+
+pub fn random_unit_vec() -> Vec3 {
+
+    let mut rng = ThreadRng::default();
+
+    // loop {
+    //     let rand_vec = Vec3::new(
+    //         rng.random_range(-1.0..1.0) as f32,
+    //         rng.random_range(-1.0..1.0) as f32,
+    //         rng.random_range(-1.0..1.0) as f32);
+    //
+    //     // let len_sq = rand_vec.mag_sq();
+    //     //
+    //     // if 1e-160 < len_sq && len_sq < 1.0 {
+    //     //     return rand_vec.normalized();
+    //     // }
+    //
+    //     return rand_vec.normalized();
+    // }
+
+    Vec3::new(
+        rng.random_range(-1.0..1.0) as f32,
+        rng.random_range(-1.0..1.0) as f32,
+        rng.random_range(-1.0..1.0) as f32)
+        .normalized()
 
 
 }
