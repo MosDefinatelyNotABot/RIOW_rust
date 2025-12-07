@@ -33,6 +33,17 @@ pub fn random_unit_vec() -> Vec3 {
     }
 }
 
+pub fn random_in_unit_disk() -> Vec3 {
+    loop {
+        let p = Vec3::new(
+            random_range(-1.0..1.0),
+            random_range(-1.0..1.0),
+            0.0
+        );
+        if p.mag_sq() < 1.0 { return p; }
+    }
+}
+
 pub fn near_zero(v: &Vec3) -> bool {
     let thresh = 1e-8;
     let w = v.abs();
