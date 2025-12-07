@@ -184,7 +184,7 @@ impl Camera {
         // saves the previously rendered image
 
         let mut out_dir = PathBuf::new();
-        out_dir.push("output_images");
+        out_dir.push("../RIOW/output_images");
 
         if !out_dir.exists() {
             let res = std::fs::create_dir(&out_dir);
