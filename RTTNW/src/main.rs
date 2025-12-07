@@ -7,7 +7,7 @@ mod material;
 use crate::camera::{random_unit_vec, Camera, CameraSetup};
 use crate::hittable::HittableList;
 use crate::material::{Lambertian, Metal, Dielectric, Material};
-use crate::sphere::Sphere;
+use crate::sphere::{MovingSphere, Sphere};
 use rand::{random, random_range, SeedableRng};
 use std::ops::{Div, Mul};
 use std::sync::Arc;
@@ -16,24 +16,24 @@ use ultraviolet::Vec3;
 
 fn main() {
 
-    println!("Ray Tracing in One Weekend.\n\
-              ===========================");
+    println!("Ray Tracing The Next Weekend.\n\
+              =============================");
 
     // scene setup
-    let world = final_render_scene(Some(2025_u64));
+    let world = final_render_scene();
 
     // camera setup
     let camera_setup = CameraSetup::new(
-        2160,                        // image height
+        480,                        // image height
         16.0 / 9.0,                 // image aspect ratio
-        512,                         // samples per pixel
-        64,                         // max ray bounce depth
+        128,                        // samples per pixel
+        32,                         // max ray bounce depth
         20.0_f32.to_radians(),      // vertical field of view
         Vec3::new(13.0, 2.0, 3.0),  // look from position
-        Vec3::new(0.0, 0.0, 0.0),  // look at position
+        Vec3::new(0.0, 0.0, 0.0),   // look at position
         Vec3::new(0.0, 1.0, 0.0),   // vertical up Vec
-        0.6_f32.to_radians(),      // defocus angle
-        10.0                         // focus distance
+        0.6_f32.to_radians(),       // defocus angle
+        10.0                        // focus distance
     );
 
     let mut camera_obj = Camera::init(&camera_setup);
@@ -42,19 +42,16 @@ fn main() {
     camera_obj.render(&world);
 
     // save rendered image to file
-    camera_obj.save(Some("final_chap14.png"));
-    // camera_obj.save(Some("test.png"));
+    camera_obj.save(Some("test.png"));
 
 }
 
-fn final_render_scene(seed: Option<u64>) -> HittableList {
+fn final_render_scene() -> HittableList {
     // setup for the final render scene
     let mut scene = HittableList::new();
 
     let ground_mat = Arc::new(Lambertian::new(Vec3::new(0.5, 0.5, 0.5)));
     scene.add(Box::new(Sphere::new(Vec3::new(0.0, -1000.0, 0.0), 1000.0, ground_mat)));
-
-    rand::rngs::StdRng::seed_from_u64(seed.unwrap_or(random::<u64>()));
 
     for (a, b) in iproduct!(-11..11, -11..11) {
 
@@ -84,7 +81,13 @@ fn final_render_scene(seed: Option<u64>) -> HittableList {
             Arc::new(Dielectric::new(1.5))
         };
 
-        scene.add(Box::new(Sphere::new(center, 0.2, sphere_material)));
+        if choose_mat < 0.8 {
+            let center_1 = center + Vec3::new(0.0, random_range(0.0..0.5), 0.0);
+            scene.add(Box::new(MovingSphere::new(center, center_1, 0.2, sphere_material)))
+
+        } else {
+            scene.add(Box::new(Sphere::new(center, 0.2, sphere_material)));
+        }
 
     }
 

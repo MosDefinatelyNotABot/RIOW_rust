@@ -28,7 +28,7 @@ impl Material for Lambertian {
         let s = 1e-8;
         if near_zero(&direction) { direction = rec.normal }
 
-        Some((Ray::new(rec.point, direction), self.colour))
+        Some((Ray::new(rec.point, direction, ray_in.time), self.colour))
 
     }
 
@@ -51,7 +51,7 @@ impl Material for Metal {
 
         let reflected = ray_in.direction.reflected(rec.normal).normalized()
             + (self.fuzz * random_unit_vec());
-        let scattered = Ray::new(rec.point, reflected);
+        let scattered = Ray::new(rec.point, reflected, ray_in.time);
 
         if scattered.direction.dot(rec.normal) > 0.0 {
             Some((scattered,  self.colour))
@@ -99,7 +99,7 @@ impl Material for Dielectric {
             unit_dir.refracted(rec.normal, ri)
         };
 
+        Some((Ray::new(rec.point, dir, ray_in.time), col))
 
-        Some((Ray::new(rec.point, dir), col))
     }
 }

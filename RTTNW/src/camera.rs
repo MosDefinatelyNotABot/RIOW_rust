@@ -130,6 +130,7 @@ impl Camera {
         }
 
     }
+
     fn ray_colour(ray: &Ray, depth: u32, world: &HittableList) -> Vec3 {
 
         if depth <= 0 { return Vec3::zero() }
@@ -176,7 +177,9 @@ impl Camera {
         } else { self.defocus_disc_sample() };
         let ray_direction = (px_sample - ray_origin).normalized();
 
-        Ray::new(ray_origin, ray_direction)
+        let ray_time = random();
+
+        Ray::new(ray_origin, ray_direction, ray_time)
 
     }
 
@@ -184,7 +187,7 @@ impl Camera {
         // saves the previously rendered image
 
         let mut out_dir = PathBuf::new();
-        out_dir.push("../RIOW/output_images");
+        out_dir.push("../RTTNW/output_images");
 
         if !out_dir.exists() {
             let res = std::fs::create_dir(&out_dir);

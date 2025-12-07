@@ -43,7 +43,7 @@ fn main() {
 
     // save rendered image to file
     camera_obj.save(Some("final_chap14.png"));
-    // camera_obj.save(Some("test.png"));
+    // camera_obj.save(Some("chap2.6.png"));
 
 }
 
